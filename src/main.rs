@@ -24,13 +24,15 @@ const FLOOR: Color = Color::RGB(195,195,195);
 
 
 
-fn build_maze(map: &mut Vec<Vec<Tile>>, start: (usize,usize)){
+fn draw_corridor(map: &mut Vec<Vec<Tile>>, start: (usize,usize),dir:bool){
 
     // marco como usado
-    append_to_maze(map,start);
+    append_to_dungeon(map,start);
 
     let mut locations: Vec<(usize,usize)> = vec![];
     locations.push(start);
+
+    let mut added=1;
 
     loop{
         let current = locations.pop();
@@ -38,12 +40,14 @@ fn build_maze(map: &mut Vec<Vec<Tile>>, start: (usize,usize)){
             break;
         }
 
-        let next = make_connection(map, current.unwrap());
+        let next = make_connection(map, current.unwrap(),dir);
         match next {
             Some(n) => {
                 locations.push(n);
             },
-            None => drop(locations.pop()),
+            None => {
+                    locations.pop();                
+            },
         }
     }
 
@@ -51,31 +55,36 @@ fn build_maze(map: &mut Vec<Vec<Tile>>, start: (usize,usize)){
 
 
 // añade un tile al laberinto
-fn append_to_maze(map: &mut Vec<Vec<Tile>>, pos:(usize,usize)){
+fn append_to_dungeon(map: &mut Vec<Vec<Tile>>, pos:(usize,usize)){
     map[pos.0][pos.1].color=FLOOR;
 }
 
 
 // Calcula el siguiente tile a añadir al laberinto
-fn make_connection(map: &mut Vec<Vec<Tile>>, location: (usize,usize)) -> Option<(usize,usize)>{
+fn make_connection(map: &mut Vec<Vec<Tile>>, location: (usize,usize), dir:bool) -> Option<(usize,usize)>{
     let mut rng = thread_rng();
 
     let x = location.0;
     let y = location.1;
 
-    let mut neighbour: [(i32,i32);4] = [(1,0),(0,1),(0,-1),(-1,0)];
+    let mut neighbour: [(i32,i32);3];
+    if dir{
+        neighbour=[(1,0),(0,1),(0,-1)];
+    }else{
+        neighbour=[(1,0),(0,1),(-1,0)];
+    }
     neighbour.shuffle(&mut rng);
 
     for n in &neighbour{
         let nx = x as i32 + n.0;
         let ny = y as i32 + n.1;
 
-        if nx >= 0 && nx < COLS as i32 
-            && ny >= 0 && ny < ROWS as i32
-            && map[nx as usize][ny as usize].color != FLOOR  // is in maze
+        if nx > 0 && nx < COLS as i32 -1 
+            && ny > 0 && ny < ROWS as i32 -1
+            && map[nx as usize][ny as usize].color != FLOOR  // is in dungeon
         {
             let next = (nx as usize,ny as usize);
-            append_to_maze(map, next);
+            append_to_dungeon(map, next);
             return Some(next);
         }
     }
@@ -134,8 +143,18 @@ pub fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
     
     // Build the map
+    let mut rng = thread_rng();
     let mut map = build_map();
-    build_maze(&mut map,(0,0));
+    draw_corridor(&mut map, (1,1),false);
+    /*
+    for nc in 0..15{
+        let rr = rng.gen_range(1..20);
+        let rc = rng.gen_range(1..20);
+        let dir = rng.gen::<bool>();
+        draw_corridor(&mut map, (rc,rr),dir);
+    }*/
+    
+    
 
     'running: loop {
         for event in event_pump.poll_iter() {
